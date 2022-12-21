@@ -1,0 +1,74 @@
+version: "3.9"
+
+services:
+  telegraf:
+    image: telegraf
+    container_name: telegraf
+    networks:
+      - default
+    volumes:
+      - mqtt_vol:/opt
+    entrypoint: /usr/bin/telegraf --config /opt/telegraf.conf
+    depends_on:
+      - mosquitto
+  mosquitto:
+    container_name: mosquitto
+    networks:
+      - default
+    image: eclipse-mosquitto
+    command: /usr/sbin/mosquitto -c /opt/mosquitto.conf
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+    volumes:
+      - mqtt_vol:/opt
+  influxdb:
+    container_name: influx
+    image: influxdb
+    networks:
+      - default
+    ports:
+      - "8086:8086"
+    volumes:
+      - influx_vol:/opt
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: /run/secrets/influx_user
+      DOCKER_INFLUXDB_INIT_PASSWORD: /run/secrets/influx_pass
+      DOCKER_INFLUXDB_INIT_ORG: /run/secrets/influx_org
+      DOCKER_INFLUXDB_INIT_BUCKET: /run/secrets/influx_bucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: /run/secrets/influx_admin_token
+      INFLUXD_BOLT_PATH: /opt/influxd.bolt
+      INFLUXD_ENGINE_PATH: /opt/engine
+    secrets:
+      - influx_user
+      - influx_pass
+      - influx_org
+      - influx_bucket
+      - influx_admin_token
+
+secrets:
+  influx_user:
+    external: true
+  influx_pass:
+    external: true
+  influx_org:
+    external: true
+  influx_bucket:
+    external: true
+  influx_admin_token:
+    external: true
+
+volumes:
+  influx_vol:
+    external: true
+    name: influx_vol
+
+  mqtt_vol:
+    external: true
+    name: mqtt_vol
+    
+networks:
+  default:
+    name: influx_network
+    external: true
